@@ -36,17 +36,6 @@ import org.apache.hadoop.io.NullWritable;
  */
 public abstract class AbstractFileMetadataSource<K extends AbstractFileMetadata>
   extends ReferenceBatchSource<NullWritable, K, StructuredRecord> {
-  public static final Schema DEFAULT_SCHEMA = Schema.recordOf(
-    "metadata",
-    Schema.Field.of(AbstractFileMetadata.FILE_NAME, Schema.of(Schema.Type.STRING)),
-    Schema.Field.of(AbstractFileMetadata.FULL_PATH, Schema.of(Schema.Type.STRING)),
-    Schema.Field.of(AbstractFileMetadata.FILE_SIZE, Schema.of(Schema.Type.LONG)),
-    Schema.Field.of(AbstractFileMetadata.TIMESTAMP, Schema.of(Schema.Type.LONG)),
-    Schema.Field.of(AbstractFileMetadata.OWNER, Schema.of(Schema.Type.STRING)),
-    Schema.Field.of(AbstractFileMetadata.IS_FOLDER, Schema.of(Schema.Type.BOOLEAN)),
-    Schema.Field.of(AbstractFileMetadata.BASE_PATH, Schema.of(Schema.Type.STRING)),
-    Schema.Field.of(AbstractFileMetadata.PERMISSION, Schema.of(Schema.Type.INT))
-  );
 
   private final AbstractFileMetadataSourceConfig config;
 

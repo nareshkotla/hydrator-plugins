@@ -16,15 +16,21 @@
 
 package co.cask.hydrator.plugin.batch.file;
 
+import co.cask.cdap.api.data.format.StructuredRecord;
+import co.cask.cdap.api.data.schema.Schema;
 import org.apache.hadoop.fs.FileStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Abstract class that contains file metadata fields.
  * Extend from this class to add credentials specific to different filesystems.
  */
 public abstract class AbstractFileMetadata {
+
   public static final String FILE_NAME = "fileName";
   public static final String FILE_SIZE = "fileSize";
   public static final String TIMESTAMP = "timeStamp";
@@ -34,36 +40,49 @@ public abstract class AbstractFileMetadata {
   public static final String BASE_PATH = "basePath";
   public static final String PERMISSION = "permission";
 
+  public static final Schema DEFAULT_SCHEMA = Schema.recordOf(
+    "metadata",
+    Schema.Field.of(AbstractFileMetadata.FILE_NAME, Schema.of(Schema.Type.STRING)),
+    Schema.Field.of(AbstractFileMetadata.FULL_PATH, Schema.of(Schema.Type.STRING)),
+    Schema.Field.of(AbstractFileMetadata.FILE_SIZE, Schema.of(Schema.Type.LONG)),
+    Schema.Field.of(AbstractFileMetadata.TIMESTAMP, Schema.of(Schema.Type.LONG)),
+    Schema.Field.of(AbstractFileMetadata.OWNER, Schema.of(Schema.Type.STRING)),
+    Schema.Field.of(AbstractFileMetadata.IS_FOLDER, Schema.of(Schema.Type.BOOLEAN)),
+    Schema.Field.of(AbstractFileMetadata.BASE_PATH, Schema.of(Schema.Type.STRING)),
+    Schema.Field.of(AbstractFileMetadata.PERMISSION, Schema.of(Schema.Type.INT))
+  );
+
+
   // contains only the name of the file
-  protected String fileName;
+  protected final String fileName;
 
   // full path of the file in the source filesystem
-  protected String fullPath;
+  protected final String fullPath;
 
   // file size
-  protected long fileSize;
+  protected final long fileSize;
 
   // modification time of file
-  protected long timeStamp;
+  protected final long timeStamp;
 
-  // owner of file
-  protected String owner;
+  // file owner
+  protected final String owner;
 
   // whether or not the file is a folder
-  protected Boolean isFolder;
+  protected final Boolean isFolder;
 
   // the base path that will be appended to the path the sink is writing to
-  protected String basePath;
+  protected final String basePath;
 
-  // perission of file, encoded in short
-  protected short permission;
+  // file permission, encoded in short
+  protected final short permission;
 
   // Credentials needed to connect to the filesystem that contains this file
   protected final Credentials credentials;
 
   private static final Logger LOG = LoggerFactory.getLogger(AbstractFileMetadata.class);
 
-  public AbstractFileMetadata(FileStatus fileStatus, String sourcePath, Credentials credentials) {
+  protected AbstractFileMetadata(FileStatus fileStatus, String sourcePath, Credentials credentials) {
     String fullPath = fileStatus.getPath().toString();
     String[] paths = fullPath.split("/");
     this.fileName = paths[paths.length - 1];
@@ -102,13 +121,14 @@ public abstract class AbstractFileMetadata {
        */
       String pathWithoutURI = fullPath.substring(fullPath.indexOf(sourcePath));
       String[] pathsWithoutURI = pathWithoutURI.split("/");
-      basePath = "";
+      String tempBasePath = "";
       for (int i = numStrip; i < pathsWithoutURI.length; i++) {
-        basePath = basePath.concat(pathsWithoutURI[i] + "/");
+        tempBasePath = tempBasePath.concat(pathsWithoutURI[i] + "/");
       }
-      if (basePath.length() > 0) {
-        basePath = basePath.substring(0, basePath.length() - 1);
+      if (tempBasePath.length() > 0) {
+        tempBasePath = tempBasePath.substring(0, tempBasePath.length() - 1);
       }
+      basePath = tempBasePath;
     }
   }
 
@@ -124,6 +144,18 @@ public abstract class AbstractFileMetadata {
     this.isFolder = isFolder;
     this.basePath = basePath;
     this.permission = permission;
+  }
+
+  protected AbstractFileMetadata(StructuredRecord record) {
+    this.fileName = record.get(FILE_NAME);
+    this.fullPath = record.get(FULL_PATH);
+    this.timeStamp = record.get(TIMESTAMP);
+    this.owner = record.get(OWNER);
+    this.fileSize = record.get(FILE_SIZE);
+    this.isFolder = record.get(IS_FOLDER);
+    this.basePath = record.get(BASE_PATH);
+    this.permission = record.get(PERMISSION);
+    this.credentials = getCredentialsFromRecord(record);
   }
 
   public String getFullPath() {
@@ -165,6 +197,43 @@ public abstract class AbstractFileMetadata {
    */
   public abstract static class Credentials {
     public String databaseType;
-    public static final String DATA_BASE_TYPE = "databaseType";
+    public static String DATABASE_TYPE = "databaseType";
+  }
+
+  /**
+   * @return Credential schema for different filesystems
+   */
+  protected abstract Schema getCredentialSchema();
+
+  /**
+   * @return Credential schema for different filesystems
+   */
+  protected abstract void addCredentialsToBuilder(StructuredRecord.Builder builder);
+
+  protected abstract Credentials getCredentialsFromRecord(StructuredRecord record);
+
+  /**
+   * Converts to StructuredRecord
+   */
+  public StructuredRecord toRecord() {
+
+    // initialize output schema
+    Schema outputSchema;
+    List<Schema.Field> fieldList = new ArrayList<>(DEFAULT_SCHEMA.getFields());
+    fieldList.addAll(getCredentialSchema().getFields());
+    outputSchema = Schema.recordOf("metadata", fieldList);
+
+    StructuredRecord.Builder outputBuilder = StructuredRecord.builder(outputSchema)
+      .set(AbstractFileMetadata.FILE_NAME, fileName)
+      .set(AbstractFileMetadata.FULL_PATH, fullPath)
+      .set(AbstractFileMetadata.FILE_SIZE, fileSize)
+      .set(AbstractFileMetadata.TIMESTAMP, timeStamp)
+      .set(AbstractFileMetadata.OWNER, owner)
+      .set(AbstractFileMetadata.IS_FOLDER, isFolder)
+      .set(AbstractFileMetadata.BASE_PATH, basePath)
+      .set(AbstractFileMetadata.PERMISSION, permission);
+    addCredentialsToBuilder(outputBuilder);
+
+    return outputBuilder.build();
   }
 }

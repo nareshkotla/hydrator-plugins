@@ -60,22 +60,9 @@ public abstract class AbstractFileCopySink
                         Emitter<KeyValue<NullWritable, AbstractFileMetadata>> emitter)
     throws Exception {
     AbstractFileMetadata output;
-    switch ((String) input.get(AbstractFileMetadata.Credentials.DATA_BASE_TYPE)) {
+    switch ((String) input.get(AbstractFileMetadata.Credentials.DATABASE_TYPE)) {
       case S3FileMetadata.DATA_BASE_NAME :
-        output = new S3FileMetadata((String) input.get(AbstractFileMetadata.FILE_NAME),
-                                    (String) input.get(AbstractFileMetadata.FULL_PATH),
-                                    (long) input.get(AbstractFileMetadata.TIMESTAMP),
-                                    (String) input.get(AbstractFileMetadata.OWNER),
-                                    (long) input.get(AbstractFileMetadata.FILE_SIZE),
-                                    (Boolean) input.get(AbstractFileMetadata.IS_FOLDER),
-                                    (String) input.get(AbstractFileMetadata.BASE_PATH),
-                                    (short) input.get(AbstractFileMetadata.PERMISSION),
-                                    new S3FileMetadata.S3Credentials((String) input.get(S3Credentials.ACCESS_KEY_ID),
-                                                                     (String) input.get(S3Credentials.SECRET_KEY_ID),
-                                                                     (String) input.get(S3Credentials.REGION),
-                                                                     (String) input.get(S3Credentials.BUCKET_NAME))
-
-          );
+        output = new S3FileMetadata(input);
         break;
 
       default:

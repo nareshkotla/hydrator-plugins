@@ -58,17 +58,6 @@ public class S3FileMetadataSource extends AbstractFileMetadataSource<S3FileMetad
     this.config = config;
   }
 
-  public static final Schema S3_CREDENTIAL_SCHEMA = Schema.recordOf(
-    "metadata",
-    Schema.Field.of(S3FileMetadata.S3Credentials.DATA_BASE_TYPE, Schema.of(Schema.Type.STRING)),
-    Schema.Field.of(S3FileMetadata.S3Credentials.ACCESS_KEY_ID, Schema.of(Schema.Type.STRING)),
-    Schema.Field.of(S3FileMetadata.S3Credentials.SECRET_KEY_ID, Schema.of(Schema.Type.STRING)),
-    Schema.Field.of(S3FileMetadata.S3Credentials.REGION, Schema.of(Schema.Type.STRING)),
-    Schema.Field.of(S3FileMetadata.S3Credentials.BUCKET_NAME, Schema.of(Schema.Type.STRING))
-  );
-
-  private Schema outputSchema;
-
   @Override
   public void prepareRun(BatchSourceContext context) throws Exception {
     Job job = JobUtils.createInstance();
@@ -90,32 +79,11 @@ public class S3FileMetadataSource extends AbstractFileMetadataSource<S3FileMetad
   @Override
   public void initialize(BatchRuntimeContext context) throws Exception {
     super.initialize(context);
-
-    // initialize output schema
-    List<Schema.Field> fieldList = new ArrayList<>(DEFAULT_SCHEMA.getFields());
-    fieldList.addAll(S3_CREDENTIAL_SCHEMA.getFields());
-    outputSchema = Schema.recordOf("metadata", fieldList);
   }
 
   @Override
   public void transform(KeyValue<NullWritable, S3FileMetadata> input, Emitter<StructuredRecord> emitter) {
-    StructuredRecord output = StructuredRecord.builder(outputSchema)
-      .set(AbstractFileMetadata.FILE_NAME, input.getValue().getFileName())
-      .set(AbstractFileMetadata.FULL_PATH, input.getValue().getFullPath())
-      .set(AbstractFileMetadata.FILE_SIZE, input.getValue().getFileSize())
-      .set(AbstractFileMetadata.TIMESTAMP, input.getValue().getTimeStamp())
-      .set(AbstractFileMetadata.OWNER, input.getValue().getOwner())
-      .set(AbstractFileMetadata.IS_FOLDER, input.getValue().getIsFolder())
-      .set(AbstractFileMetadata.BASE_PATH, input.getValue().getBasePath())
-      .set(AbstractFileMetadata.PERMISSION, input.getValue().getPermission())
-      // credentials
-      .set(S3FileMetadata.S3Credentials.DATA_BASE_TYPE, input.getValue().getCredentials().databaseType)
-      .set(S3FileMetadata.S3Credentials.ACCESS_KEY_ID, input.getValue().getCredentials().accessKeyId)
-      .set(S3FileMetadata.S3Credentials.SECRET_KEY_ID, input.getValue().getCredentials().secretKeyId)
-      .set(S3FileMetadata.S3Credentials.REGION, input.getValue().getCredentials().region)
-      .set(S3FileMetadata.S3Credentials.BUCKET_NAME, input.getValue().getCredentials().bucketName)
-      .build();
-    emitter.emit(output);
+    emitter.emit(input.getValue().toRecord());
   }
 
   /**
