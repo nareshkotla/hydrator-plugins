@@ -64,7 +64,9 @@ public abstract class AbstractFileMetadataSource<K extends AbstractFileMetadata>
   /**
    * Load job configurations here.
    */
-  public abstract void prepareRun(BatchSourceContext context) throws Exception;
+  public void prepareRun(BatchSourceContext context) throws Exception {
+    config.validate();
+  }
 
   /**
    * Convert file metadata to StructuredRecord and emit.
@@ -81,21 +83,32 @@ public abstract class AbstractFileMetadataSource<K extends AbstractFileMetadata>
     public String sourcePaths;
 
     @Macro
-    @Description("The number of files each split manipulates")
-    public int maxSplitSize;
+    @Description("The number of files each split reads in")
+    public Integer maxSplitSize;
+
+    @Macro
+    @Description("The URI of the filesystem")
+    public String filesystemURI;
 
     @Description("Whether or not to copy recursively")
     public Boolean recursiveCopy;
 
-    public AbstractFileMetadataSourceConfig(String name, String sourcePaths, int maxSplitSize) {
+    public AbstractFileMetadataSourceConfig(String name, String sourcePaths,
+                                            Integer maxSplitSize, String filesystemURI) {
       super(name);
       this.sourcePaths = sourcePaths;
       this.maxSplitSize = maxSplitSize;
+      this.filesystemURI = filesystemURI;
     }
 
     public void validate() {
+      if (!this.containsMacro("maxSplitSize")) {
+        if (maxSplitSize <= 0) {
+          throw new IllegalArgumentException("Max split size must be a positive integer.");
+        }
       }
     }
+  }
 
     /*
      * Put additional configurations here for specific databases.

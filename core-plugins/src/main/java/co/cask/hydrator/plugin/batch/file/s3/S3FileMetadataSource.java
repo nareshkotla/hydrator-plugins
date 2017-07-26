@@ -60,18 +60,18 @@ public class S3FileMetadataSource extends AbstractFileMetadataSource<S3FileMetad
 
   @Override
   public void prepareRun(BatchSourceContext context) throws Exception {
+    super.prepareRun(context);
     Job job = JobUtils.createInstance();
     Configuration conf = job.getConfiguration();
 
-    S3MetadataInputFormat.setSourcePaths(job, config.sourcePaths);
-    S3MetadataInputFormat.setMaxSplitSize(job, config.maxSplitSize);
-    S3MetadataInputFormat.setAccessKeyId(job, config.accessKeyId);
-    S3MetadataInputFormat.setRecursiveCopy(job, config.recursiveCopy.toString());
-    S3MetadataInputFormat.setSecretKeyId(job, config.secretKeyId);
-    S3MetadataInputFormat.setRegion(job, config.region);
-    S3MetadataInputFormat.setURI(job, "s3a://" + config.bucketName);
-    S3MetadataInputFormat.setFsClass(job);
-    S3MetadataInputFormat.setBucketName(job, config.bucketName);
+    S3MetadataInputFormat.setSourcePaths(conf, config.sourcePaths);
+    S3MetadataInputFormat.setMaxSplitSize(conf, config.maxSplitSize);
+    S3MetadataInputFormat.setAccessKeyId(conf, config.accessKeyId);
+    S3MetadataInputFormat.setRecursiveCopy(conf, config.recursiveCopy.toString());
+    S3MetadataInputFormat.setSecretKeyId(conf, config.secretKeyId);
+    S3MetadataInputFormat.setRegion(conf, config.region);
+    S3MetadataInputFormat.setURI(conf, config.filesystemURI);
+    S3MetadataInputFormat.setFsClass(conf);
 
     context.setInput(Input.of(config.referenceName, new SourceInputFormatProvider(S3MetadataInputFormat.class, conf)));
   }
@@ -87,7 +87,7 @@ public class S3FileMetadataSource extends AbstractFileMetadataSource<S3FileMetad
   }
 
   /**
-   * Credentials required for connecting to S3Filesystem.
+   * AbstractCredentials required for connecting to S3Filesystem.
    */
   public class S3FileMetadataSourceConfig extends AbstractFileMetadataSourceConfig {
 
@@ -105,17 +105,22 @@ public class S3FileMetadataSource extends AbstractFileMetadataSource<S3FileMetad
     @Description("The AWS Region to operate in")
     public String region;
 
-    @Macro
-    @Description("The AWS Bucket Name to work with")
-    public String bucketName;
-
-    public S3FileMetadataSourceConfig(String name, String sourcePaths, int maxSplitSize,
-                                  String accessKeyId, String secretKeyId, String region, String bucketName) {
-      super(name, sourcePaths, maxSplitSize);
+    public S3FileMetadataSourceConfig(String name, String sourcePaths, Integer maxSplitSize, String filesystemURI,
+                                      String accessKeyId, String secretKeyId, String region) {
+      super(name, sourcePaths, maxSplitSize, filesystemURI);
       this.accessKeyId = accessKeyId;
       this.secretKeyId = secretKeyId;
       this.region = region;
-      this.bucketName = bucketName;
+    }
+
+    @Override
+    public void validate() {
+      super.validate();
+      if (!this.containsMacro("filesystemURI")) {
+        if (!filesystemURI.startsWith("s3a://")) {
+          throw new IllegalArgumentException("URI for S3 source must start with s3a://");
+        }
+      }
     }
   }
 }

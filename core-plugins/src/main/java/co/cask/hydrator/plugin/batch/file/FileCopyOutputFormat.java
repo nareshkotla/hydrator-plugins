@@ -34,9 +34,11 @@ import java.util.Map;
  * Class for the OutputFormat that FileCopySink uses.
  */
 public class FileCopyOutputFormat extends OutputFormat {
-  protected static final String BASE_PATH = "base.path";
-  protected static final String ENABLE_OVERWRITE = "enable.overwrite";
-  protected static final String BUFFER_SIZE = "buffer.size";
+  public static final String BASE_PATH = "base.path";
+  public static final String ENABLE_OVERWRITE = "enable.overwrite";
+  public static final String PRESERVE_OWNER = "preserve.owner";
+  public static final String FS_CACHE = "filesystem.cache";
+  public static final String BUFFER_SIZE = "buffer.size";
 
   private static final Logger LOG = LoggerFactory.getLogger(FileCopyOutputFormat.class);
 
@@ -46,6 +48,15 @@ public class FileCopyOutputFormat extends OutputFormat {
 
   public static void setEnableOverwrite(Map<String, String> conf, String value) {
     conf.put(ENABLE_OVERWRITE, value);
+  }
+
+  public static void setPreserveFileOwner(Map<String, String> conf, String value) {
+    conf.put(PRESERVE_OWNER, value);
+  }
+
+  public static void setFilesystemCaching(Map<String, String> conf, Boolean value, String destScheme) {
+    conf.put(FS_CACHE, value.toString());
+    conf.put(String.format("fs.%s.impl.disable.cache", destScheme), String.valueOf(!value));
   }
 
   public static void setBufferSize(Map<String, String> conf, String value) {
